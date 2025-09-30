@@ -1,0 +1,13 @@
+.env    
+
+/venv/*
+
+/faiss_index/*
+
+/qwen2.5-3b-merged/*
+/qwen2.5-3b-lora/*
+/huggingface/*
+
+/docx/*
+/offload/*
+/merged_hf_qwen2.5/*
