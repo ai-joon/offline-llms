@@ -101,23 +101,3 @@ python .\merge.py --base Qwen/Qwen2.5-3B-Instruct --adapter C:\Source\research\q
 python .\merge.py --base Qwen/Qwen2.5-0.5B-Instruct --adapter C:\Source\research\qwen2.5-3b-lora --out C:\Source\research\qwen2.5-3b-merged --cpu-only --dtype fp32 --infer
 ```
 
-Key flags:
-- `--base` HF base model id/path
-- `--adapter` LoRA adapter folder
-- `--out` Output HF folder for merged model
-- `--cpu-only` Force CPU load/merge (safer on Windows without CUDA)
-- `--dtype` fp32 (default) or bf16
-- `--offload` Temp folder to reduce RAM usage while loading
-
----
-
-## Troubleshooting
-- Ollama model not found: `ollama pull <model>` and confirm server at `OLLAMA_HOST`.
-- UnicodeEncodeError while embedding: handled by sanitization in `loader.py` (rebuild the index).
-- PDF preview blank: install PyMuPDF for the image-based viewer:
-  ```powershell
-  pip install pymupdf
-  ```
-- Performance: in the UI lower Top-k, `Max context size`, and `Max answer tokens`, or use smaller models.
-
-
