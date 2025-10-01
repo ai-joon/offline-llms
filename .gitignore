@@ -3,6 +3,7 @@
 /venv/*
 
 /faiss_index/*
+/faiss_indices/*
 
 /qwen2.5-3b-merged/*
 /qwen2.5-3b-lora/*

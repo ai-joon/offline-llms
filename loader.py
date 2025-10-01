@@ -60,6 +60,54 @@ def load_index(index_dir: Union[str, Path], emb_model: str = "nomic-embed-text",
     return FAISS.load_local(str(index_dir), embeddings, allow_dangerous_deserialization=True)
 
 
+def get_pdf_index_name(pdf_path: Union[str, Path]) -> str:
+    """Generate a unique index directory name for a PDF file."""
+    import hashlib
+    pdf_path = Path(pdf_path)
+    # Use filename without extension as base
+    base_name = pdf_path.stem
+    # Add hash of full path to ensure uniqueness
+    path_hash = hashlib.md5(str(pdf_path.absolute()).encode()).hexdigest()[:8]
+    return f"faiss_index_{base_name}_{path_hash}"
+
+
+def get_or_create_pdf_index(
+    pdf_path: Union[str, Path],
+    indices_dir: Union[str, Path],
+    emb_model: str = "nomic-embed-text",
+    base_url: str = "http://localhost:11434",
+) -> FAISS:
+    """
+    Load existing index for a PDF or create a new one if it doesn't exist.
+    
+    Args:
+        pdf_path: Path to the PDF file
+        indices_dir: Directory to store all indices
+        emb_model: Ollama embedding model name
+        base_url: Ollama base URL
+    
+    Returns:
+        FAISS vector store for the PDF
+    """
+    pdf_path = Path(pdf_path)
+    indices_dir = Path(indices_dir)
+    indices_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Get the specific index directory for this PDF
+    index_name = get_pdf_index_name(pdf_path)
+    index_path = indices_dir / index_name
+    
+    # Check if index already exists
+    if index_path.exists() and (index_path / "index.faiss").exists():
+        # Load existing index
+        return load_index(index_path, emb_model=emb_model, base_url=base_url)
+    else:
+        # Create new index from PDF
+        db = build_index_from_pdf_paths([pdf_path], emb_model=emb_model, base_url=base_url)
+        save_index(db, index_path)
+        return db
+
+
 def build_and_save_index_from_pdf_paths(
     paths: Sequence[Union[str, Path]],
     out_dir: Union[str, Path],

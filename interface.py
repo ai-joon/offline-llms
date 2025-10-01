@@ -7,7 +7,7 @@ import streamlit as st
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import PromptTemplate
 
-from loader import load_index
+from loader import load_index, get_or_create_pdf_index
 
 
 def _inject_dark_mode(enabled: bool) -> None:
@@ -63,6 +63,8 @@ def _ensure_state() -> None:
     st.session_state.setdefault("last_sources", [])
     st.session_state.setdefault("_is_generating", False)
     st.session_state.setdefault("_pending_msg", None)
+    st.session_state.setdefault("selected_pdf", None)
+    st.session_state.setdefault("current_pdf_index", None)
 
 
 def _display_pdf(pdf_path: str, height: int = 600) -> None:
@@ -238,16 +240,15 @@ def main() -> None:
         llm_model = os.environ.get("OLLAMA_LLM", "qwen2.5:3b-instruct")
 
 
-        # Auto-load FAISS index on startup if not already loaded
-        if st.session_state.get("db") is None:
-            if index_dir.exists():
-                with st.spinner("Loading FAISS index..."):
-                    st.session_state["db"] = load_index(index_dir, emb_model=emb_model, base_url=base_url)
-                st.success(f"Index loaded from {index_dir}")
-            else:
-                st.warning(f"Index directory not found: {index_dir}")
+        # Display current index status
+        if st.session_state.get("current_pdf_index"):
+            st.success(f"📄 Active: {os.path.basename(st.session_state['current_pdf_index'])}")
+        elif st.session_state.get("db") is not None:
+            st.info(f"📚 Using global index")
         else:
-            st.caption(f"Using index: {index_dir}")
+            st.warning("⚠️ No document selected - answers will be based on general knowledge only")
+        
+        st.markdown("---")
         st.session_state["top_k"] = st.slider("Top-k context", min_value=1, max_value=10, value=st.session_state["top_k"]) 
         st.session_state["retrieval_mode"] = st.radio("Retrieval", options=["similarity", "mmr"], index=(0 if st.session_state["retrieval_mode"] == "similarity" else 1))
         st.session_state["max_context_chars"] = st.number_input("Max context size (chars)", min_value=500, max_value=20000, value=st.session_state["max_context_chars"], step=500)
@@ -312,7 +313,7 @@ def main() -> None:
                 st.caption(f"{src}  |  pages: {', '.join(str(p) for p in sorted(pages)) if pages else 'n/a'}")
                 st.markdown("---")
 
-        st.subheader("Original PDF")
+        st.subheader("📚 Document Selection")
         default_pdf = r"C:\Source\research\docx\report-ko.pdf"
         # File selector: list PDFs in default directory plus manual entry
         import glob
@@ -320,7 +321,40 @@ def main() -> None:
         options = []
         if os.path.isdir(default_dir):
             options = sorted(glob.glob(os.path.join(default_dir, "*.pdf")))
-        selected = st.selectbox("Choose a PDF", options=[default_pdf] + options, index=0)
+        
+        # Get unique options (remove duplicates)
+        all_options = list(dict.fromkeys([default_pdf] + options))
+        
+        # Find the index of previously selected PDF or use default
+        default_index = 0
+        if st.session_state.get("selected_pdf") and st.session_state["selected_pdf"] in all_options:
+            default_index = all_options.index(st.session_state["selected_pdf"])
+        
+        selected = st.selectbox("Choose a PDF", options=all_options, index=default_index, key="pdf_selector")
+        
+        # Check if PDF selection has changed
+        if selected != st.session_state.get("selected_pdf"):
+            st.session_state["selected_pdf"] = selected
+            # Load or create index for the selected PDF
+            indices_base_dir = Path.cwd() / "faiss_indices"
+            with st.spinner(f"Loading/creating index for {os.path.basename(selected)}..."):
+                try:
+                    st.session_state["db"] = get_or_create_pdf_index(
+                        selected, 
+                        indices_base_dir,
+                        emb_model=emb_model,
+                        base_url=base_url
+                    )
+                    st.session_state["current_pdf_index"] = selected
+                    st.success(f"Index ready for {os.path.basename(selected)}")
+                    # Clear messages when switching documents
+                    st.session_state["messages"] = []
+                    st.session_state["last_sources"] = []
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error loading/creating index: {e}")
+                    st.session_state["db"] = None
+        
         _display_pdf(selected, height=700)
 
 
