@@ -145,35 +145,56 @@ def _display_pdf(pdf_path: str, height: int = 600) -> None:
 def _answer(query: str, top_k: int, llm_model: str, base_url: str, show_ctx: bool, retrieval_mode: str, max_context_chars: int, max_tokens: int):
     db = st.session_state.get("db")
     if db is None:
-        return "Index not loaded. Set index directory and click Load index.", []
-    if retrieval_mode == "mmr":
-        retriever = db.as_retriever(search_type="mmr", search_kwargs={"k": top_k, "fetch_k": max(10, top_k * 5)})
+        # If no index is loaded, answer using general knowledge
+        template = (
+            "You are a helpful assistant. Answer the question using your general knowledge.\n"
+            "Be informative and helpful in your response.\n\n"
+            "Question: {question}\nAnswer:"
+        )
+        prompt = PromptTemplate.from_template(template).format(question=query)
     else:
-        retriever = db.as_retriever(search_kwargs={"k": top_k})
-    ctx_docs = retriever.invoke(query)
-    # Trim context to a character budget to speed up generation
-    parts: List[str] = []
-    total = 0
-    for d in ctx_docs:
-        text = d.page_content or ""
-        remaining = max_context_chars - total
-        if remaining <= 0:
-            break
-        if len(text) > remaining:
-            text = text[:remaining]
-        if text:
-            parts.append(text)
-            total += len(text)
-    context = "\n\n".join(parts)
-    # Sanitize to avoid surrogate/invalid unicode issues on Windows terminals or downstream libs
-    context = context.encode("utf-8", errors="ignore").decode("utf-8", errors="ignore")
+        if retrieval_mode == "mmr":
+            retriever = db.as_retriever(search_type="mmr", search_kwargs={"k": top_k, "fetch_k": max(10, top_k * 5)})
+        else:
+            retriever = db.as_retriever(search_kwargs={"k": top_k})
+        ctx_docs = retriever.invoke(query)
+        
+        # Trim context to a character budget to speed up generation
+        parts: List[str] = []
+        total = 0
+        for d in ctx_docs:
+            text = d.page_content or ""
+            remaining = max_context_chars - total
+            if remaining <= 0:
+                break
+            if len(text) > remaining:
+                text = text[:remaining]
+            if text:
+                parts.append(text)
+                total += len(text)
+        context = "\n\n".join(parts)
+        # Sanitize to avoid surrogate/invalid unicode issues on Windows terminals or downstream libs
+        context = context.encode("utf-8", errors="ignore").decode("utf-8", errors="ignore")
 
-    template = (
-        "You are a concise assistant. Use the context to answer.\n"
-        # "If the answer isn't in the context, say you don't know.\n\n"
-        "Question: {question}\nContext:\n{context}\nAnswer:"
-    )
-    prompt = PromptTemplate.from_template(template).format(question=query, context=context)
+        # Check if context is empty or very short (likely irrelevant)
+        if not context.strip() or len(context.strip()) < 50:
+            # Use general knowledge template when no relevant context is found
+            template = (
+                "You are a helpful assistant. Answer the question using your general knowledge.\n"
+                "Be informative and helpful in your response.\n\n"
+                "Question: {question}\nAnswer:"
+            )
+            prompt = PromptTemplate.from_template(template).format(question=query)
+            ctx_docs = []  # No context to show
+        else:
+            # Use context-aware template when relevant context is available
+            template = (
+                "You are a helpful assistant. Answer the question using the provided context when available and relevant.\n"
+                "If the context doesn't contain the answer, use your general knowledge to provide a helpful response.\n"
+                "Always be helpful and informative, whether using context or general knowledge.\n\n"
+                "Question: {question}\nContext:\n{context}\nAnswer:"
+            )
+            prompt = PromptTemplate.from_template(template).format(question=query, context=context)
 
     llm = OllamaLLM(model=llm_model, base_url=base_url, temperature=0.2, num_predict=max_tokens)
 
@@ -183,7 +204,7 @@ def _answer(query: str, top_k: int, llm_model: str, base_url: str, show_ctx: boo
         streamed += token
         placeholder.markdown(streamed)
 
-    if show_ctx:
+    if show_ctx and ctx_docs:
         with st.expander("Show retrieved context"):
             for i, d in enumerate(ctx_docs, start=1):
                 st.markdown(f"**Chunk {i}**")
@@ -191,6 +212,9 @@ def _answer(query: str, top_k: int, llm_model: str, base_url: str, show_ctx: boo
                 if d.metadata:
                     st.caption(str(d.metadata))
                 st.markdown("---")
+    elif show_ctx and not ctx_docs:
+        with st.expander("Show retrieved context"):
+            st.info("No relevant context found. Answer based on general knowledge.")
 
     return streamed, ctx_docs
 
@@ -242,7 +266,7 @@ def main() -> None:
                 st.markdown(msg["content"]) 
 
         is_generating = st.session_state.get("_is_generating", False)
-        user_msg = st.chat_input("Ask something about your indexed documents…", disabled=is_generating)
+        user_msg = st.chat_input("Ask me anything…", disabled=is_generating)
         if user_msg and not is_generating:
             st.session_state["messages"].append({"role": "user", "content": user_msg})
             with st.chat_message("user"):
