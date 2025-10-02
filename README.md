@@ -1,4 +1,4 @@
-## Running Offline LLMs
+## Offline LLMs Running
 
 This repo contains a local RAG demo, a Streamlit chatbot UI, utilities to build and reuse a FAISS vector DB, and LoRA fine-tuning/merge helpers.
 
