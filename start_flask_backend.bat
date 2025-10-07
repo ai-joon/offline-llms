@@ -11,9 +11,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :16005') do (
 )
 
 echo.
-echo Installing Flask dependencies...
 cd backend
-pip install -r requirements_flask.txt
 
 echo.
 echo Starting Flask backend...
