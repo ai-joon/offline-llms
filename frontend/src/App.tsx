@@ -191,7 +191,7 @@ function App() {
 
       <div className="flex h-[calc(100vh-65px)]">
         {/* Left Sidebar - Document Selection & Settings */}
-        <aside className="w-80 bg-base-200 border-r border-base-300 overflow-y-auto">
+        <aside className="w-150 bg-base-200 border-r border-base-300 overflow-y-auto">
           <div className="p-4 space-y-4">
             {/* Document Selection */}
             <div className="card bg-base-100 shadow">
@@ -328,8 +328,16 @@ function App() {
             {messages.map((m, idx) => (
               <div key={idx} className={`chat ${m.role === 'user' ? 'chat-end' : 'chat-start'}`}>
                 <div className="chat-image avatar">
-                  <div className="w-10 rounded-full bg-base-300 flex items-center justify-center">
-                    {m.role === 'user' ? '👤' : '🤖'}
+                  <div className="w-10 h-10 rounded-full ring ring-primary/70 ring-offset-base-100 ring-offset-2 overflow-hidden bg-base-300 flex items-center justify-center">
+                    {m.role === 'user' ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-full h-full p-2 fill-base-content/80">
+                        <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z"/>
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-full h-full p-2 fill-base-content/80">
+                        <path d="M7 4V2h2v2h6V2h2v2h2a2 2 0 012 2v5a5 5 0 01-5 5h-1.28l.72 2H16v2H8v-2h.56l.72-2H8a5 5 0 01-5-5V6a2 2 0 012-2h2zm13 7V8h-2v3a3 3 0 01-3 3h-6a3 3 0 01-3-3V8H4v3a3 3 0 003 3h10a3 3 0 003-3zM8 10h2v2H8v-2zm6 0h2v2h-2v-2z"/>
+                      </svg>
+                    )}
                   </div>
                 </div>
                 <div className="chat-bubble">
@@ -385,8 +393,8 @@ function App() {
           </div>
         </main>
 
-        {/* Right Sidebar - PDF Preview */}
-        <aside className="w-96 bg-base-200 border-l border-base-300 overflow-hidden flex flex-col">
+        {/* Right Sidebar - PDF Preview (wider for readability) */}
+        <aside className="w-[560px] bg-base-200 border-l border-base-300 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-base-300">
             <h2 className="text-lg font-bold">📄 Document Preview</h2>
           </div>
