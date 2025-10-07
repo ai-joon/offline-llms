@@ -109,6 +109,43 @@ function App() {
     }
   }
 
+  async function refreshPdfs(selectPath?: string) {
+    try {
+      const res = await fetch(`${apiBase}/pdfs`)
+      const data = (await res.json()) as PDFDocument[]
+      setPdfs(data)
+      if (selectPath) {
+        const found = data.find((d) => d.path === selectPath)
+        if (found) {
+          await loadPdf(found.path, found.name)
+        }
+      }
+    } catch {}
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const form = new FormData()
+    form.append('file', file)
+    try {
+      const res = await fetch(`${apiBase}/upload-pdf`, { method: 'POST', body: form })
+      const data = await res.json()
+      if (data?.success && data?.path) {
+        // If backend already selected/built index, just update current selection immediately
+        setCurrentPdf(data.path)
+        setCurrentPdfName(data.name || '')
+        setMessages([])
+        // Also refresh list to include it
+        await refreshPdfs(data.path)
+      }
+    } catch {
+    } finally {
+      // reset input so same file can be selected again later
+      e.target.value = ''
+    }
+  }
+
   async function sendMessage() {
     const text = input.trim()
     if (!text) return
@@ -161,6 +198,15 @@ function App() {
               <div className="card-body p-4">
                 <h2 className="card-title text-lg">📚 Documents</h2>
                 <div className="divider my-1"></div>
+                <div className="mb-3">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="file-input file-input-bordered file-input-sm w-full"
+                    onChange={handleUpload}
+                    title="Upload a PDF from your computer"
+                  />
+                </div>
                 {!currentPdf && (
                   <div className="alert alert-warning py-2 text-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>

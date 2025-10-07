@@ -138,6 +138,50 @@ def get_pdf_info(pdf_name):
     except Exception as e:
         return jsonify({"error": f"Failed to get PDF info: {str(e)}"}), 500
 
+# Upload PDF endpoint
+@app.route('/api/upload-pdf', methods=['POST'])
+def upload_pdf():
+    """Upload a PDF from user's machine, save to pdf_directory, build/select FAISS index, and return its info"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file part"}), 400
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No selected file"}), 400
+        filename = file.filename
+        # Basic validation
+        if not filename.lower().endswith('.pdf'):
+            return jsonify({"error": "Only PDF files are allowed"}), 400
+
+        dest_dir = Path(settings.pdf_directory)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = dest_dir / filename
+        # If a file with same name exists, append a counter
+        counter = 1
+        base_name = dest_path.stem
+        suffix = dest_path.suffix
+        while dest_path.exists():
+            dest_path = dest_dir / f"{base_name}_{counter}{suffix}"
+            counter += 1
+
+        file.save(str(dest_path))
+
+        # Build or load FAISS index for the uploaded PDF and set as current DB
+        index_service = IndexService()
+        import asyncio
+        db = asyncio.run(index_service.get_or_create_pdf_index(str(dest_path)))
+        set_db(db, str(dest_path))
+
+        # Return info so frontend can select it immediately
+        return jsonify({
+            "success": True,
+            "name": dest_path.name,
+            "path": str(dest_path),
+            "selected": True
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to upload PDF: {str(e)}"}), 500
+
 # Chat endpoints
 @app.route('/api/chat', methods=['POST'])
 def send_message():
