@@ -13,7 +13,7 @@ _PROJECT_ROOT = _Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from loader import get_or_create_pdf_index, load_index, get_pdf_index_name
+from ai.loader import get_or_create_pdf_index, load_index, get_pdf_index_name
 
 class IndexService:
     def __init__(self):
