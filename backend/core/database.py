@@ -14,7 +14,8 @@ async def initialize_db():
     global _db, _current_pdf_path
     _db = None
     _current_pdf_path = None
-    print("📚 Database initialized")
+    # Avoid non-ASCII output for better Windows console compatibility
+    print("Database initialized")
 
 def get_db() -> Optional[FAISS]:
     """Get the current database instance"""

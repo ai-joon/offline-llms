@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 import os
 import glob
 from pathlib import Path
@@ -12,16 +13,31 @@ from api.routes import chat, pdfs, health
 from core.config import settings
 from core.database import get_db, initialize_db
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await initialize_db()
+    print("AI Chatbot API started successfully!")
+    yield
+    # Shutdown
+    print("AI Chatbot API shutting down...")
+
 app = FastAPI(
     title="AI Chatbot API",
     description="Backend API for AI Chatbot with Document RAG",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",  # Vite default dev port
+        "http://127.0.0.1:5173"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,22 +52,12 @@ app.include_router(chat.router, prefix="/api", tags=["chat"])
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize the application on startup"""
-    await initialize_db()
-    print("🚀 AI Chatbot API started successfully!")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    print("👋 AI Chatbot API shutting down...")
-
 if __name__ == "__main__":
+    port = int(os.getenv("PORT", "16005"))
     uvicorn.run(
-        "main:app",
+        app,
         host="0.0.0.0",
-        port=8000,
-        reload=True,
+        port=port,
+        reload=False,
         log_level="info"
     )

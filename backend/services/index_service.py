@@ -5,7 +5,15 @@ from langchain_community.vectorstores import FAISS
 from langchain_ollama import OllamaEmbeddings
 
 from core.config import settings
-from loader import get_or_create_pdf_index
+import sys
+from pathlib import Path as _Path
+
+# Ensure the project root (containing `loader.py`) is on sys.path
+_PROJECT_ROOT = _Path(__file__).resolve().parents[2]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from loader import get_or_create_pdf_index, load_index, get_pdf_index_name
 
 class IndexService:
     def __init__(self):
@@ -34,7 +42,6 @@ class IndexService:
             if not self.global_index_dir.exists():
                 return None
             
-            from loader import load_index
             db = load_index(
                 index_dir=self.global_index_dir,
                 emb_model=self.emb_model,
@@ -48,7 +55,6 @@ class IndexService:
     def index_exists(self, pdf_path: str) -> bool:
         """Check if an index exists for a specific PDF"""
         try:
-            from loader import get_pdf_index_name
             index_name = get_pdf_index_name(pdf_path)
             index_path = self.indices_dir / index_name
             return index_path.exists() and (index_path / "index.faiss").exists()
@@ -58,7 +64,6 @@ class IndexService:
     def get_index_info(self, pdf_path: str) -> dict:
         """Get information about an index"""
         try:
-            from loader import get_pdf_index_name
             index_name = get_pdf_index_name(pdf_path)
             index_path = self.indices_dir / index_name
             

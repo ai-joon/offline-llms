@@ -11,15 +11,7 @@ export default {
     require('daisyui'),
   ],
   daisyui: {
-    themes: [
-      'light',
-      'dark',
-      {
-        corporate: {
-          ...require('daisyui/src/theming/themes')['[data-theme=corporate]'],
-        },
-      },
-    ],
+    themes: ['light', 'dark', 'corporate'],
     darkTheme: 'dark',
   },
 }
