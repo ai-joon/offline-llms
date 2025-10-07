@@ -3,7 +3,13 @@ from flask_cors import CORS
 from datetime import datetime
 import psutil
 import os
+import sys
 from pathlib import Path
+
+# Add project root to path to access loader.py and other modules
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from core.config import settings
 from core.database import get_db, set_db, get_current_pdf_path, initialize_db
@@ -12,6 +18,11 @@ from services.pdf_service import PDFService
 from services.index_service import IndexService
 
 app = Flask(__name__)
+
+# Fix PDF directory path to use absolute path from project root
+settings.pdf_directory = str(PROJECT_ROOT / "docx")
+settings.faiss_index_dir = str(PROJECT_ROOT / "faiss_indices")
+settings.faiss_global_index_dir = str(PROJECT_ROOT / "faiss_index")
 
 # CORS configuration
 CORS(app, origins=[
